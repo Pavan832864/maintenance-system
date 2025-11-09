@@ -40,7 +40,7 @@ jobs:
         echo "Safety check completed"
 
     - name: Upload analysis reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: code-analysis-reports
         path: |
@@ -53,7 +53,7 @@ jobs:
         zip -r deployment-package.zip . -x "*.git*" "*.env" "__pycache__/*" "*.pyc"
 
     - name: Upload deployment package
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: deployment-package
         path: deployment-package.zip
