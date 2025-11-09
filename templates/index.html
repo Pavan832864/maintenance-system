@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maintenance Request Management System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>Maintenance Request Management System</h1>
+                <p class="subtitle">Cloud-Based DevOpsSec Project</p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Create Request Section -->
+            <section class="section create-section">
+                <h2>Submit New Maintenance Request</h2>
+                <form id="createForm" class="form">
+                    <div class="form-group">
+                        <label for="title">Request Title *</label>
+                        <input type="text" id="title" name="title" placeholder="e.g., AC not working" required minlength="3" maxlength="255">
+                        <small>3-255 characters</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">Description *</label>
+                        <textarea id="description" name="description" placeholder="Describe the issue in detail..." required minlength="10"></textarea>
+                        <small>Minimum 10 characters</small>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="priority">Priority</label>
+                            <select id="priority" name="priority">
+                                <option value="Low">Low</option>
+                                <option value="Medium" selected>Medium</option>
+                                <option value="High">High</option>
+                                <option value="Critical">Critical</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="createdBy">Your Name</label>
+                            <input type="text" id="createdBy" name="createdBy" placeholder="Your name" maxlength="100">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Submit Request</button>
+                </form>
+                <div id="createMessage" class="message"></div>
+            </section>
+
+            <!-- Requests List Section -->
+            <section class="section requests-section">
+                <div class="section-header">
+                    <h2>All Maintenance Requests</h2>
+                    <button id="refreshBtn" class="btn btn-secondary">Refresh</button>
+                </div>
+
+                <div id="filterControls" class="filter-controls">
+                    <input type="text" id="searchInput" placeholder="Search by title..." class="search-input">
+                    <select id="statusFilter" class="filter-select">
+                        <option value="">All Statuses</option>
+                        <option value="Pending">Pending</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Resolved">Resolved</option>
+                        <option value="Closed">Closed</option>
+                    </select>
+                </div>
+
+                <div id="requestsList" class="requests-list">
+                    <p class="loading">Loading requests...</p>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2025 Maintenance Request Management System | Cloud DevOpsSec Project</p>
+        </footer>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Edit Maintenance Request</h2>
+            <form id="editForm" class="form">
+                <input type="hidden" id="editId" name="editId">
+
+                <div class="form-group">
+                    <label for="editTitle">Title</label>
+                    <input type="text" id="editTitle" name="editTitle" minlength="3" maxlength="255">
+                </div>
+
+                <div class="form-group">
+                    <label for="editDescription">Description</label>
+                    <textarea id="editDescription" name="editDescription" minlength="10"></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editStatus">Status</label>
+                        <select id="editStatus" name="editStatus">
+                            <option value="Pending">Pending</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Resolved">Resolved</option>
+                            <option value="Closed">Closed</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editPriority">Priority</label>
+                        <select id="editPriority" name="editPriority">
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                            <option value="Critical">Critical</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="modal-buttons">
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                </div>
+            </form>
+            <div id="editMessage" class="message"></div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

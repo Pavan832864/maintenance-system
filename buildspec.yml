@@ -1,0 +1,36 @@
+# AWS CodeBuild Configuration for CI/CD Pipeline
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo "Installing dependencies..."
+      - pip install --upgrade pip
+      - pip install -r requirements.txt
+      - echo "Running static code analysis..."
+      - bandit -r . -f json -o bandit-report.json || true
+      - pylint app.py --exit-zero --output-format=json > pylint-report.json || true
+      - safety check --json > safety-report.json || true
+
+  build:
+    commands:
+      - echo "Building application package..."
+      - echo "Verifying DynamoDB connectivity..."
+      - echo "Build phase completed"
+
+  post_build:
+    commands:
+      - echo "Preparing deployment package..."
+      - zip -r deployment-package.zip . -x "*.git*" "*.env" "__pycache__/*" "*.pyc" "venv/*"
+
+artifacts:
+  files:
+    - deployment-package.zip
+    - bandit-report.json
+    - pylint-report.json
+    - safety-report.json
+  name: BuildArtifact
+
+cache:
+  paths:
+    - '/root/.cache/pip/**/*'

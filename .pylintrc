@@ -1,0 +1,12 @@
+# Pylint Configuration
+[MASTER]
+disable=
+    C0103,
+    R0903,
+    W0212,
+    C0302
+
+[MESSAGES CONTROL]
+disable=
+    missing-docstring,
+    too-many-arguments

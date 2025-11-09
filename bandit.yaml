@@ -1,0 +1,8 @@
+# Bandit Security Configuration
+assert_used:
+  skips:
+    - /test
+exclude_dirs:
+  - /tests
+  - /venv
+  - /.git
