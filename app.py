@@ -47,6 +47,11 @@ def index():
     """Serve the main page"""
     return render_template('index.html')
 
+@app.route('/admin')
+def admin():
+    """Serve the admin dashboard page"""
+    return render_template('admin.html')
+
 @app.route('/api/requests', methods=['GET'])
 def get_requests():
     """Retrieve all maintenance requests from DynamoDB"""
@@ -155,51 +160,62 @@ def update_request(request_id):
         # Build update expression
         update_expressions = []
         expression_values = {}
-        
+        expression_names = {}
+
+        # Title
         if 'title' in data:
             title = data['title'].strip()
             if len(title) < 3 or len(title) > 255:
                 return jsonify({'error': 'Title must be between 3 and 255 characters'}), 400
-            update_expressions.append('title = :title')
+            update_expressions.append('#title = :title')
+            expression_names['#title'] = 'title'
             expression_values[':title'] = title
         
+        # Description
         if 'description' in data:
             description = data['description'].strip()
             if len(description) < 10:
                 return jsonify({'error': 'Description must be at least 10 characters'}), 400
-            update_expressions.append('description = :description')
+            update_expressions.append('#description = :description')
+            expression_names['#description'] = 'description'
             expression_values[':description'] = description
         
+        # Status
         if 'status' in data:
             status = data['status'].strip()
             valid_statuses = ['Pending', 'In Progress', 'Resolved', 'Closed']
             if status not in valid_statuses:
                 return jsonify({'error': f'Invalid status. Must be one of: {", ".join(valid_statuses)}'}), 400
             update_expressions.append('#status = :status')
+            expression_names['#status'] = 'status'
             expression_values[':status'] = status
         
+        # Priority
         if 'priority' in data:
             priority = data['priority'].strip()
             valid_priorities = ['Low', 'Medium', 'High', 'Critical']
             if priority not in valid_priorities:
                 return jsonify({'error': f'Invalid priority. Must be one of: {", ".join(valid_priorities)}'}), 400
-            update_expressions.append('priority = :priority')
+            update_expressions.append('#priority = :priority')
+            expression_names['#priority'] = 'priority'
             expression_values[':priority'] = priority
         
         if not update_expressions:
             return jsonify({'error': 'No fields to update'}), 400
         
         # Add updated_at timestamp
-        update_expressions.append('updated_at = :updated_at')
+        update_expressions.append('#updated_at = :updated_at')
+        expression_names['#updated_at'] = 'updated_at'
         expression_values[':updated_at'] = datetime.utcnow().isoformat() + 'Z'
         
-        # Update the item
-        attribute_names = {'#status': 'status'} if any('status' in expr for expr in update_expressions) else {}
+        # Final update expression
+        update_expression = "SET " + ", ".join(update_expressions)
         
+        # Update item
         table.update_item(
             Key={'id': request_id},
-            UpdateExpression=', '.join(update_expressions),
-            ExpressionAttributeNames=attribute_names if attribute_names else None,
+            UpdateExpression=update_expression,
+            ExpressionAttributeNames=expression_names,
             ExpressionAttributeValues=expression_values
         )
         
@@ -211,6 +227,7 @@ def update_request(request_id):
     except Exception as e:
         logger.error(f"Error updating request: {e}")
         return jsonify({'error': 'Failed to update request'}), 500
+
 
 @app.route('/api/requests/<request_id>', methods=['DELETE'])
 def delete_request(request_id):
@@ -234,6 +251,45 @@ def delete_request(request_id):
     except Exception as e:
         logger.error(f"Error deleting request: {e}")
         return jsonify({'error': 'Failed to delete request'}), 500
+
+@app.route('/api/admin/stats', methods=['GET'])
+def get_stats():
+    """Retrieve statistics about all maintenance requests"""
+    try:
+        logger.info("[v0] Fetching admin statistics")
+        response = table.scan()
+        requests_data = response.get('Items', [])
+        
+        # Calculate statistics
+        total = len(requests_data)
+        pending = len([r for r in requests_data if r.get('status') == 'Pending'])
+        in_progress = len([r for r in requests_data if r.get('status') == 'In Progress'])
+        resolved = len([r for r in requests_data if r.get('status') == 'Resolved'])
+        closed = len([r for r in requests_data if r.get('status') == 'Closed'])
+        
+        # Count by priority
+        critical = len([r for r in requests_data if r.get('priority') == 'Critical'])
+        high = len([r for r in requests_data if r.get('priority') == 'High'])
+        medium = len([r for r in requests_data if r.get('priority') == 'Medium'])
+        low = len([r for r in requests_data if r.get('priority') == 'Low'])
+        
+        stats = {
+            'total': total,
+            'pending': pending,
+            'in_progress': in_progress,
+            'resolved': resolved,
+            'closed': closed,
+            'critical': critical,
+            'high': high,
+            'medium': medium,
+            'low': low
+        }
+        
+        logger.info(f"[v0] Statistics calculated: {stats}")
+        return jsonify(stats), 200
+    except Exception as e:
+        logger.error(f"Error fetching statistics: {e}")
+        return jsonify({'error': 'Failed to fetch statistics'}), 500
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
