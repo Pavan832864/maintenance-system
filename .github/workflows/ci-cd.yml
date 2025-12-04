@@ -143,9 +143,11 @@ jobs:
     - name: Upload SonarQube results
       uses: actions/upload-artifact@v4
       if: always()
+      continue-on-error: true
       with:
         name: sonarqube-results
         path: .scannerwork/
+        if-no-files-found: ignore
 
   owasp-zap:
     runs-on: ubuntu-latest
