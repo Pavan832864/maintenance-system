@@ -266,8 +266,8 @@ jobs:
           sleep 2
           
           # Start app (run as current user, log to home directory)
-          # Use python3 or venv python
-          nohup python3 app.py > ~/maintenance-system.log 2>&1 &
+          # Use venv python to ensure correct environment
+          nohup venv/bin/python app.py > ~/maintenance-system.log 2>&1 &
           sleep 5
           
           # Verify it's running
