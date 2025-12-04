@@ -256,7 +256,7 @@ jobs:
           
           # Verify it's running
           ps aux | grep "python.*app.py" | grep -v grep || echo "App not running!"
-DEPLOYEOF
+        DEPLOYEOF
         rm /tmp/ec2_key.pem
 
     - name: Health check
