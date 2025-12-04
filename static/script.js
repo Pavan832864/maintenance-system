@@ -90,8 +90,8 @@ function displayRequests(requests) {
                     <small>Created: ${formatDate(req.created_at)}</small>
                 </div>
                 <div class="request-actions">
-                    <button class="btn btn-primary btn-small" onclick="openEditModal(${req.id})">Edit</button>
-                    <button class="btn btn-danger btn-small" onclick="deleteRequest(${req.id})">Delete</button>
+                    <button class="btn btn-primary btn-small" onclick="openEditModal('${escapeHtml(req.id)}')">Edit</button>
+                    <button class="btn btn-danger btn-small" onclick="deleteRequest('${escapeHtml(req.id)}')">Delete</button>
                 </div>
             </div>
         </div>
