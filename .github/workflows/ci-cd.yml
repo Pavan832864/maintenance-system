@@ -180,14 +180,27 @@ jobs:
         rules_file_name: '.zap/rules.tsv'
         cmd_options: '-a'
 
+    - name: Find ZAP reports
+      if: always()
+      run: |
+        echo "Looking for ZAP reports..."
+        find . -name "*zap*report*" -type f 2>/dev/null || true
+        find . -name "*.html" -type f | grep -i zap || true
+        find . -name "*.json" -type f | grep -i zap || true
+        ls -la *.html *.json 2>/dev/null || true
+
     - name: Upload OWASP ZAP results
       uses: actions/upload-artifact@v4
       if: always()
+      continue-on-error: true
       with:
         name: zap-results
         path: |
           zap_report.html
           zap_report.json
+          **/zap_report.html
+          **/zap_report.json
+        if-no-files-found: ignore
 
   deploy:
     runs-on: ubuntu-latest
