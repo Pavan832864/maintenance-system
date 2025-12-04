@@ -13,7 +13,10 @@
             <div class="header-content">
                 <div class="header-top">
                     <h1>Admin Dashboard</h1>
-                    <a href="/" class="btn btn-secondary btn-small">Back to User View</a>
+                    <div style="display: flex; gap: 10px;">
+                        <button id="logoutBtn" class="btn btn-secondary btn-small" style="background: #d32f2f; color: white;">Logout</button>
+                        <a href="/" class="btn btn-secondary btn-small">Back to User View</a>
+                    </div>
                 </div>
                 <p class="subtitle">Maintenance Request Management System - Admin Panel</p>
             </div>
@@ -201,5 +204,26 @@
     </div>
 
     <script src="{{ url_for('static', filename='admin.js') }}"></script>
+    <script>
+        // Logout functionality
+        document.getElementById('logoutBtn').addEventListener('click', async function() {
+            if (confirm('Are you sure you want to logout?')) {
+                try {
+                    const response = await fetch('/admin/logout', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    if (response.ok) {
+                        window.location.href = '/admin/login';
+                    }
+                } catch (error) {
+                    console.error('Logout error:', error);
+                    window.location.href = '/admin/login';
+                }
+            }
+        });
+    </script>
 </body>
 </html>

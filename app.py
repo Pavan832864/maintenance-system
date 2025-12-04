@@ -6,10 +6,13 @@ Cloud DevOpsSec Project
 import os
 import json
 import logging
+import hashlib
 from datetime import datetime
 from uuid import uuid4
-from flask import Flask, render_template, request, jsonify
+from functools import wraps
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from flask_cors import CORS
+from flask_session import Session
 import boto3
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
@@ -19,7 +22,14 @@ load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True)
+
+# Configure session
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_PERMANENT'] = False
+app.config['SESSION_USE_SIGNER'] = True
+Session(app)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -29,16 +39,80 @@ AWS_REGION = os.getenv('AWS_REGION', 'eu-north-1')
 AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY_ID')
 AWS_SECRET_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 
-# Initialize DynamoDB client
-dynamodb = boto3.resource(
-    'dynamodb',
-    region_name=AWS_REGION,
-    aws_access_key_id=AWS_ACCESS_KEY,
-    aws_secret_access_key=AWS_SECRET_KEY
-)
+# AWS IAM Configuration
+IAM_ROLE_ARN = os.getenv('IAM_ROLE_ARN', '')
+IAM_SESSION_DURATION = int(os.getenv('IAM_SESSION_DURATION', '3600'))
+
+# Admin credentials (should be in environment variables or DynamoDB in production)
+ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'admin')
+ADMIN_PASSWORD_HASH = os.getenv('ADMIN_PASSWORD_HASH', hashlib.sha256('admin123'.encode()).hexdigest())
+
+# Initialize AWS clients with IAM support
+try:
+    # Try to use IAM role if available, otherwise use access keys
+    if IAM_ROLE_ARN:
+        sts_client = boto3.client('sts', region_name=AWS_REGION)
+        assumed_role = sts_client.assume_role(
+            RoleArn=IAM_ROLE_ARN,
+            RoleSessionName='maintenance-system-session',
+            DurationSeconds=IAM_SESSION_DURATION
+        )
+        credentials = assumed_role['Credentials']
+        dynamodb = boto3.resource(
+            'dynamodb',
+            region_name=AWS_REGION,
+            aws_access_key_id=credentials['AccessKeyId'],
+            aws_secret_access_key=credentials['SecretAccessKey'],
+            aws_session_token=credentials['SessionToken']
+        )
+        iam_client = boto3.client(
+            'iam',
+            region_name=AWS_REGION,
+            aws_access_key_id=credentials['AccessKeyId'],
+            aws_secret_access_key=credentials['SecretAccessKey'],
+            aws_session_token=credentials['SessionToken']
+        )
+        logger.info("Using IAM role for AWS access")
+    else:
+        dynamodb = boto3.resource(
+            'dynamodb',
+            region_name=AWS_REGION,
+            aws_access_key_id=AWS_ACCESS_KEY,
+            aws_secret_access_key=AWS_SECRET_KEY
+        )
+        iam_client = boto3.client(
+            'iam',
+            region_name=AWS_REGION,
+            aws_access_key_id=AWS_ACCESS_KEY,
+            aws_secret_access_key=AWS_SECRET_KEY
+        )
+        logger.info("Using access keys for AWS access")
+except Exception as e:
+    logger.warning(f"Could not initialize IAM role, using access keys: {e}")
+    dynamodb = boto3.resource(
+        'dynamodb',
+        region_name=AWS_REGION,
+        aws_access_key_id=AWS_ACCESS_KEY,
+        aws_secret_access_key=AWS_SECRET_KEY
+    )
+    iam_client = boto3.client(
+        'iam',
+        region_name=AWS_REGION,
+        aws_access_key_id=AWS_ACCESS_KEY,
+        aws_secret_access_key=AWS_SECRET_KEY
+    )
 
 TABLE_NAME = 'maintenance_requests'
 table = dynamodb.Table(TABLE_NAME)
+
+# Authentication decorator
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('admin_logged_in'):
+            return jsonify({'error': 'Admin authentication required'}), 401
+        return f(*args, **kwargs)
+    return decorated_function
 
 # Routes
 
@@ -47,9 +121,46 @@ def index():
     """Serve the main page"""
     return render_template('index.html')
 
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    """Admin login page"""
+    if request.method == 'POST':
+        data = request.get_json() if request.is_json else request.form
+        username = data.get('username', '').strip()
+        password = data.get('password', '')
+        
+        # Hash the provided password
+        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        
+        # Verify credentials
+        if username == ADMIN_USERNAME and password_hash == ADMIN_PASSWORD_HASH:
+            session['admin_logged_in'] = True
+            session['admin_username'] = username
+            if request.is_json:
+                return jsonify({'message': 'Login successful', 'redirect': '/admin'}), 200
+            return redirect(url_for('admin'))
+        else:
+            if request.is_json:
+                return jsonify({'error': 'Invalid username or password'}), 401
+            return render_template('admin_login.html', error='Invalid username or password')
+    
+    # If already logged in, redirect to admin dashboard
+    if session.get('admin_logged_in'):
+        return redirect(url_for('admin'))
+    
+    return render_template('admin_login.html')
+
+@app.route('/admin/logout', methods=['POST'])
+def admin_logout():
+    """Admin logout"""
+    session.clear()
+    return jsonify({'message': 'Logged out successfully'}), 200
+
 @app.route('/admin')
 def admin():
-    """Serve the admin dashboard page"""
+    """Serve the admin dashboard page - requires authentication"""
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
     return render_template('admin.html')
 
 @app.route('/api/requests', methods=['GET'])
@@ -253,6 +364,7 @@ def delete_request(request_id):
         return jsonify({'error': 'Failed to delete request'}), 500
 
 @app.route('/api/admin/stats', methods=['GET'])
+@admin_required
 def get_stats():
     """Retrieve statistics about all maintenance requests"""
     try:
@@ -307,6 +419,95 @@ def health_check():
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         return jsonify({'status': 'unhealthy', 'error': str(e)}), 500
+
+@app.route('/api/iam/verify', methods=['GET'])
+@admin_required
+def verify_iam():
+    """Verify IAM role and permissions"""
+    try:
+        # Get current IAM user/role
+        try:
+            identity = iam_client.get_user()
+            user_name = identity['User']['UserName']
+            return jsonify({
+                'status': 'success',
+                'iam_user': user_name,
+                'iam_enabled': True,
+                'region': AWS_REGION
+            }), 200
+        except ClientError as e:
+            # Try to get role instead
+            try:
+                sts_client = boto3.client('sts', region_name=AWS_REGION)
+                identity = sts_client.get_caller_identity()
+                return jsonify({
+                    'status': 'success',
+                    'iam_arn': identity.get('Arn'),
+                    'iam_enabled': True,
+                    'region': AWS_REGION
+                }), 200
+            except Exception:
+                return jsonify({
+                    'status': 'warning',
+                    'message': 'IAM verification failed',
+                    'iam_enabled': False,
+                    'error': str(e)
+                }), 200
+    except Exception as e:
+        logger.error(f"IAM verification error: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': 'IAM verification failed',
+            'error': str(e)
+        }), 500
+
+@app.route('/api/iam/permissions', methods=['GET'])
+@admin_required
+def get_iam_permissions():
+    """Get IAM permissions for the current role/user"""
+    try:
+        permissions = []
+        try:
+            # Try to get user policies
+            identity = iam_client.get_user()
+            user_name = identity['User']['UserName']
+            
+            # Get attached user policies
+            attached_policies = iam_client.list_attached_user_policies(UserName=user_name)
+            for policy in attached_policies.get('AttachedPolicies', []):
+                permissions.append({
+                    'type': 'managed_policy',
+                    'name': policy['PolicyName'],
+                    'arn': policy['PolicyArn']
+                })
+        except ClientError:
+            # If user doesn't exist, try role
+            sts_client = boto3.client('sts', region_name=AWS_REGION)
+            identity = sts_client.get_caller_identity()
+            arn = identity.get('Arn', '')
+            
+            if ':role/' in arn:
+                role_name = arn.split(':role/')[-1].split('/')[-1]
+                attached_policies = iam_client.list_attached_role_policies(RoleName=role_name)
+                for policy in attached_policies.get('AttachedPolicies', []):
+                    permissions.append({
+                        'type': 'managed_policy',
+                        'name': policy['PolicyName'],
+                        'arn': policy['PolicyArn']
+                    })
+        
+        return jsonify({
+            'status': 'success',
+            'permissions': permissions,
+            'count': len(permissions)
+        }), 200
+    except Exception as e:
+        logger.error(f"Error getting IAM permissions: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to retrieve permissions',
+            'error': str(e)
+        }), 500
 
 @app.errorhandler(404)
 def not_found(error):

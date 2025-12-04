@@ -1,0 +1,8 @@
+# OWASP ZAP Rules Configuration
+# Format: Rule ID, Action (IGNORE, WARN, FAIL)
+10021	WARN
+10023	WARN
+10024	WARN
+10054	WARN
+10055	WARN
+
