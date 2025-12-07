@@ -5,6 +5,11 @@
 
 set -e
 
+# Get the directory where the script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_DIR="$( cd "$SCRIPT_DIR/.." && pwd )"
+cd "$PROJECT_DIR"
+
 echo "Starting Maintenance Request Management System..."
 
 # Check if virtual environment exists
@@ -14,12 +19,20 @@ if [ ! -d "venv" ]; then
 fi
 
 # Activate virtual environment
+echo "Activating virtual environment..."
 source venv/bin/activate
 
-# Install/update dependencies
+# Verify we're using venv pip
+VENV_PIP="venv/bin/pip"
+if [ ! -f "$VENV_PIP" ]; then
+    echo "ERROR: Virtual environment pip not found!"
+    exit 1
+fi
+
+# Install/update dependencies using venv pip directly
 echo "Installing dependencies..."
-pip install --upgrade pip
-pip install -r requirements.txt
+$VENV_PIP install --upgrade pip --quiet
+$VENV_PIP install -r requirements.txt
 
 # Check if .env exists
 if [ ! -f ".env" ]; then
@@ -44,26 +57,5 @@ echo ""
 echo "Press Ctrl+C to stop the server"
 echo ""
 
-python app.py
-set -e
-
-echo "[v0] Starting maintenance system application..."
-
-cd /home/ec2-user/maintenance-system
-
-# Create virtual environment if it doesn't exist
-if [ ! -d "venv" ]; then
-    python3 -m venv venv
-fi
-
-# Activate virtual environment
-source venv/bin/activate
-
-# Install dependencies
-pip install --upgrade pip
-pip install -r requirements.txt
-
-# Start application with Gunicorn in background
-nohup gunicorn --workers 4 --bind 0.0.0.0:5000 --timeout 120 app:app > app.log 2>&1 &
-
-echo "[v0] Application started successfully on port 5000"
+# Use venv python to ensure correct environment
+venv/bin/python app.py
