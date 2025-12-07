@@ -15,8 +15,6 @@ dist/
 build/
 *.egg
 
-ADMIN_CREDENTIALS_SETUP.md
-
 # ============================================
 # Environment Variables & Secrets
 # ============================================
@@ -171,8 +169,8 @@ zap_report.json
 *.sqlite3
 
 # ============================================
-# Documentation files with credentials should be committed
-# (They contain instructions, not actual secrets)
+# Documentation Files (Contains credential examples/instructions)
 # ============================================
-# Note: ADMIN_CREDENTIALS_SETUP.md is safe to commit
-# It only contains instructions, not actual credentials
+ADMIN_CREDENTIALS_SETUP.md
+GIT_PUSH_INSTRUCTIONS.md
+QUICK_PUSH_GUIDE.md
