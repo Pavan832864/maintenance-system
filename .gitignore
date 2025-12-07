@@ -1,39 +1,176 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
-/node_modules
+# ============================================
+# Python - Virtual Environment & Cache
+# ============================================
+/venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
 
-# next.js
-/.next/
-/out/
+# ============================================
+# Environment Variables & Secrets
+# ============================================
+.env
+.env.local
+.env.*.local
+!.env.example
+*.env
+*secrets*
+*credentials*.env
+*secret*.env
 
-# production
-/build
+# ============================================
+# Security Keys & Certificates
+# ============================================
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*key*.pem
+*.cer
+*private*
+*.ssh
+*_key
+*_keys
 
-# debug
+# ============================================
+# AWS & Cloud Files
+# ============================================
+/aws/
+awscliv2.zip
+*.aws
+.aws/
+
+# ============================================
+# Flask Session Files
+# ============================================
+/flask_session/
+*.session
+
+# ============================================
+# Logs & Debug Files
+# ============================================
+*.log
+*.log.*
+logs/
+app.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+lerna-debug.log*
 
-# env files (keep .env.example, ignore .env)
-.env
-!.env.example
+# ============================================
+# Node.js & Next.js
+# ============================================
+/node_modules
+/.next/
+/out/
+.next
+next-env.d.ts
+*.tsbuildinfo
 
-# PEM keys
-*.pem
-*key*.pem
+# ============================================
+# Production Build Files
+# ============================================
+/build
+/dist
+/.svelte-kit
 
-# Local AWS build/deploy artifacts
-/aws/
+# ============================================
+# IDE & Editor Files
+# ============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.sublime-project
+*.sublime-workspace
 
+# ============================================
+# OS Files
+# ============================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
 
+# ============================================
+# Temporary Files
+# ============================================
+*.tmp
+*.temp
+*.bak
+*.backup
+*.swp
+*~
+.cache/
 
-# vercel
+# ============================================
+# Deployment Artifacts
+# ============================================
+deployment-package.zip
+*.zip
+*.tar.gz
+*.tgz
+
+# ============================================
+# Test & Coverage
+# ============================================
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.tox/
+.hypothesis/
+*.cover
+coverage/
+*.lcov
+
+# ============================================
+# SonarQube & Security Reports
+# ============================================
+.scannerwork/
+bandit-report.json
+bandit-report.txt
+pylint-report.json
+pylint-report.txt
+safety-report.json
+safety-report.txt
+zap_report.html
+zap_report.json
+
+# ============================================
+# Vercel & Deployment
+# ============================================
 .vercel
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# ============================================
+# Database Files
+# ============================================
+*.db
+*.sqlite
+*.sqlite3
 
-/venv
+# ============================================
+# Documentation files with credentials should be committed
+# (They contain instructions, not actual secrets)
+# ============================================
+# Note: ADMIN_CREDENTIALS_SETUP.md is safe to commit
+# It only contains instructions, not actual credentials
